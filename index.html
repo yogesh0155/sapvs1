@@ -28,8 +28,14 @@
   .pass{border-color:#14532d;color:#bbf7d0}
   .fail{border-color:#7f1d1d;color:#fecaca}
   .debug{font-family:var(--mono);font-size:.9rem;color:#cbd5e1;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:10px;white-space:pre-wrap}
+  .ok{background:#052e16;border:1px solid #14532d;color:#bbf7d0;padding:6px 10px;border-radius:8px;font-family:var(--mono);display:inline-block}
   footer{margin-top:30px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 </style>
+<noscript>
+  <div style="background:#7f1d1d;color:#fecaca;padding:12px;text-align:center;">
+    JavaScript is disabled — enable it to use the Rule Playground.
+  </div>
+</noscript>
 </head>
 <body>
   <div class="container">
@@ -39,6 +45,7 @@
     </div>
 
     <section class="card">
+      <div id="scriptFlag" class="ok" style="display:none">Script loaded ✅</div>
       <h1>Syntax-Aware Protocol Verification System</h1>
       <p>Automated, grammar- and state-aware verifier for network protocols — built for correctness and security analysis.</p>
       <div class="badges"><span>ABNF/PEG</span><span>Rule DSL</span><span>State Engine</span><span>JSON Reports</span></div>
@@ -49,13 +56,13 @@
       <p>Paste a raw HTTP/1.1 request or response. Click Run Checks.</p>
       <div class="grid">
         <div>
-          <button class="btn" id="btnOk">Paste Example (Valid)</button>
-          <button class="btn" id="btnBadHost" style="background:#ef4444">Missing Host (Fail)</button>
-          <button class="btn" id="btnBadStart" style="background:#f59e0b">No Start-Line (Fail)</button>
+          <button class="btn" onclick="SAPVS_fill('ok')">Paste Example (Valid)</button>
+          <button class="btn" style="background:#ef4444" onclick="SAPVS_fill('badHost')">Missing Host (Fail)</button>
+          <button class="btn" style="background:#f59e0b" onclick="SAPVS_fill('noStart')">No Start-Line (Fail)</button>
         </div>
         <textarea id="httpInput" placeholder="Paste HTTP here..."></textarea>
         <div id="httpOut" class="result">No input yet.</div>
-        <div><button class="btn" id="btnRun">Run Checks</button></div>
+        <div><button class="btn" onclick="SAPVS_run()">Run Checks</button></div>
         <div class="debug" id="debugBox">Debug: (will populate after Run Checks)</div>
       </div>
     </section>
@@ -67,33 +74,37 @@
   </div>
 
 <script>
+/* ===== ultra-compatible JS (no modern syntax) ===== */
 (function(){
   function $(id){ return document.getElementById(id); }
-  // Normalize newlines, strip leading whitespace (incl. hidden chars/BOM)
-  function norm(s){ return (s||"").replace(/\\uFEFF/g,"").replace(/\\r\\n/g,"\\n").replace(/\\r/g,"\\n").replace(/^\\s+/, ""); }
+  function norm(s){
+    if(!s){ return ""; }
+    // strip BOM, normalize newlines, trim leading whitespace
+    return String(s).replace(/\uFEFF/g,"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/^\s+/, "");
+  }
 
   function runChecks(){
-    const input = $("httpInput");
-    const out   = $("httpOut");
-    const dbg   = $("debugBox");
+    var input = $("httpInput");
+    var out   = $("httpOut");
+    var dbg   = $("debugBox");
     if(!input || !out || !dbg){ return; }
 
-    const text = norm(input.value);
-    const findings = [];
+    var text = norm(input.value);
+    var findings = [];
 
-    // Permit leading whitespace before start-line
-    const reqRe  = /^\\s*(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\\s+\\S+\\s+HTTP\\/1\\.[01]\\b/i;
-    const respRe = /^\\s*HTTP\\/1\\.[01]\\s+(\\d{3})\\b/i;
+    // Allow leading whitespace before start-line
+    var reqRe  = /^\s*(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+\S+\s+HTTP\/1\.[01]\b/i;
+    var respRe = /^\s*HTTP\/1\.[01]\s+(\d{3})\b/i;
 
-    const isRequest = reqRe.test(text);
-    const respMatch = respRe.exec(text);
-    const isResponse = !!respMatch;
-    const statusCode = isResponse ? parseInt(respMatch[1], 10) : null;
+    var isRequest = reqRe.test(text);
+    var respMatch = text.match(respRe);
+    var isResponse = !!respMatch;
+    var statusCode = isResponse ? parseInt(respMatch[1], 10) : null;
 
     // Request rules
     if (isRequest) {
-      // Use a newline prefix so ^\nHost works even if Host is first line after start-line
-      if (!/\\nHost:\\s*[^\\n]+/i.test("\\n" + text)) {
+      // Prepend newline so the regex matches even if Host is first header
+      if (!(/\nHost:\s*[^\n]+/i).test("\n" + text)) {
         findings.push("HTTP/1.1 request MUST include Host header");
       }
     }
@@ -105,69 +116,70 @@
       }
     }
 
-    // If there is content but neither request nor response detected => invalid
+    // Invalid/incomplete message
     if (text.length > 0 && !isRequest && !isResponse) {
       findings.push("Invalid HTTP/1.1 message: missing start-line (e.g., 'GET /… HTTP/1.1' or 'HTTP/1.1 200 OK').");
     }
 
-    // Render findings
-    if (text.trim().length === 0) {
+    // Render result
+    if (text.replace(/\s+/g,"").length === 0) {
       out.className = "result";
       out.textContent = "No input yet.";
     } else if (findings.length === 0) {
       out.className = "result pass";
       out.textContent = "No findings. Looks good ✔";
     } else {
+      // Build simple bullet list
+      var html = "<b>Findings:</b><ul>";
+      for (var i=0;i<findings.length;i++){ html += "<li>"+findings[i]+"</li>"; }
+      html += "</ul>";
       out.className = "result fail";
-      out.innerHTML = "<b>Findings:</b><ul>" + findings.map(f => "<li>"+f+"</li>").join("") + "</ul>";
+      out.innerHTML = html;
     }
 
-    // Debug details so you can see what it detected
-    dbg.textContent =
-      "Detected:\\n" +
-      "  isRequest  = " + isRequest + "\\n" +
-      "  isResponse = " + isResponse + "\\n" +
-      "  statusCode = " + (statusCode === null ? "n/a" : statusCode) + "\\n" +
-      "Text length: " + text.length + "\\n" +
-      "Preview (first line): " + (text.split("\\n")[0] || "(empty)");
+    // Debug panel
+    var firstLine = (text.split("\n")[0] || "(empty)");
+    dbg.textContent = "Detected:\n"
+      + "  isRequest  = " + isRequest + "\n"
+      + "  isResponse = " + isResponse + "\n"
+      + "  statusCode = " + (statusCode === null ? "n/a" : statusCode) + "\n"
+      + "Text length: " + text.length + "\n"
+      + "Preview (first line): " + firstLine;
   }
 
   function fill(kind){
-    const ok =
-`GET /index.html HTTP/1.1
-Host: example.com
-User-Agent: SAPVS
+    var ok =
+"GET /index.html HTTP/1.1\n\
+Host: example.com\n\
+User-Agent: SAPVS\n\
+\n";
+    var missingHost =
+"GET /index.html HTTP/1.1\n\
+User-Agent: SAPVS\n\
+\n";
+    var noStartLine =
+"Date: Thu, 06 Nov 2025 10:00:00 GMT\n\
+Server: SAPVS-Demo\n\
+Content-Type: text/html\n\
+Content-Length: 123\n";
 
-`;
-    const missingHost =
-`GET /index.html HTTP/1.1
-User-Agent: SAPVS
+    var v = ok;
+    if (kind === "badHost") v = missingHost;
+    if (kind === "noStart") v = noStartLine;
 
-`;
-    const noStartLine =
-`Date: Thu, 06 Nov 2025 10:00:00 GMT
-Server: SAPVS-Demo
-Content-Type: text/html
-Content-Length: 123
-`;
-    $("httpInput").value = (kind === "ok") ? ok : (kind === "badHost") ? missingHost : noStartLine;
+    $("httpInput").value = v;
     runChecks();
   }
 
-  function ready(){
-    $("btnRun")?.addEventListener("click", runChecks);
-    $("btnOk")?.addEventListener("click", () => fill("ok"));
-    $("btnBadHost")?.addEventListener("click", () => fill("badHost"));
-    $("btnBadStart")?.addEventListener("click", () => fill("noStart"));
-    // Prefill with valid example so you see output + debug immediately
-    fill("ok");
-  }
+  // Expose globals for inline onclick
+  window.SAPVS_run  = runChecks;
+  window.SAPVS_fill = fill;
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", ready);
-  } else {
-    ready();
-  }
+  // Mark “script loaded” and prefill valid example immediately
+  try {
+    $("scriptFlag").style.display = "inline-block";
+  } catch(e){}
+  fill("ok");
 })();
 </script>
 </body>
