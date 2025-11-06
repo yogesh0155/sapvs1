@@ -1,34 +1,35 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SAPVS — Syntax-Aware Protocol Verification System</title>
-  <style>
-    :root{
-      --bg:#0b1220;--card:#111827;--border:#1f2937;--text:#e2e8f0;--muted:#94a3b8;--acc:#3b82f6;
-      --mono: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
-    .container{max-width:980px;margin:0 auto;padding:24px}
-    .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
-    .nav a{color:var(--text);text-decoration:none;margin-left:18px;opacity:.9}
-    .nav a:hover{opacity:1}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin:18px 0}
-    h1{margin:.2rem 0 1rem}
-    .badges span{display:inline-block;background:#0b1220;border:1px solid var(--border);padding:6px 10px;border-radius:999px;margin:2px;font-size:.85rem}
-    .code{font-family:var(--mono);background:#0b1220;border:1px dashed var(--border);border-radius:10px;padding:10px;overflow:auto}
-    .btn{display:inline-block;background:var(--acc);color:white;padding:8px 12px;border-radius:10px;text-decoration:none;border:0;cursor:pointer}
-    .btn:hover{filter:brightness(1.05)}
-    .play{display:grid;grid-template-columns:1fr;gap:12px}
-    textarea{width:100%;min-height:160px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:var(--mono)}
-    .result{padding:10px;border-radius:10px;border:1px solid var(--border);background:#0b1220}
-    .pass{border-color:#14532d;color:#bbf7d0}
-    .fail{border-color:#7f1d1d;color:#fecaca}
-    footer{margin-top:30px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SAPVS — Syntax-Aware Protocol Verification System</title>
+<style>
+  :root{
+    --bg:#0b1220;--card:#111827;--border:#1f2937;--text:#e2e8f0;--muted:#94a3b8;--acc:#3b82f6;
+    --mono: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+  .container{max-width:980px;margin:0 auto;padding:24px}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+  .nav a{color:var(--text);text-decoration:none;margin-left:18px;opacity:.9}
+  .nav a:hover{opacity:1}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin:18px 0}
+  h1{margin:.2rem 0 1rem}
+  .badges span{display:inline-block;background:#0b1220;border:1px solid var(--border);padding:6px 10px;border-radius:999px;margin:2px;font-size:.85rem}
+  .code{font-family:var(--mono);background:#0b1220;border:1px dashed var(--border);border-radius:10px;padding:10px;overflow:auto}
+  .btn{display:inline-block;background:var(--acc);color:white;padding:8px 12px;border-radius:10px;text-decoration:none;border:0;cursor:pointer}
+  .btn:hover{filter:brightness(1.05)}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  textarea{width:100%;min-height:160px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:var(--mono)}
+  .result{padding:10px;border-radius:10px;border:1px solid var(--border);background:#0b1220}
+  .pass{border-color:#14532d;color:#bbf7d0}
+  .fail{border-color:#7f1d1d;color:#fecaca}
+  .debug{font-family:var(--mono);font-size:.9rem;color:#cbd5e1;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:10px;white-space:pre-wrap}
+  footer{margin-top:30px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+</style>
 </head>
 <body>
   <div class="container">
@@ -44,28 +45,19 @@
     </section>
 
     <section class="card">
-      <h2>Quickstart (CLI Project)</h2>
-      <pre class="code"><code>pip install -e .
-synprot check examples/pcaps/http_small.pcap -p http -o report.json</code></pre>
-    </section>
-
-    <section class="card">
       <h2>Rule Playground (browser demo)</h2>
       <p>Paste a raw HTTP/1.1 request or response. Click Run Checks.</p>
-      <div class="play">
+      <div class="grid">
         <div>
           <button class="btn" id="btnOk">Paste Example (Valid)</button>
-          <button class="btn" id="btnBad" style="background:#ef4444">Paste Example (Missing Host)</button>
+          <button class="btn" id="btnBadHost" style="background:#ef4444">Missing Host (Fail)</button>
+          <button class="btn" id="btnBadStart" style="background:#f59e0b">No Start-Line (Fail)</button>
         </div>
         <textarea id="httpInput" placeholder="Paste HTTP here..."></textarea>
         <div id="httpOut" class="result">No input yet.</div>
         <div><button class="btn" id="btnRun">Run Checks</button></div>
+        <div class="debug" id="debugBox">Debug: (will populate after Run Checks)</div>
       </div>
-    </section>
-
-    <section class="card">
-      <h2>About Project</h2>
-      <p><strong>SAPVS</strong> is developed by <strong>Jenin</strong>, <strong>Raswanth</strong>, and <strong>Yogesh</strong>. The goal is to provide a syntax- and state-aware framework for protocol conformance and security analysis with an approachable CLI and clear reports.</p>
     </section>
 
     <footer>
@@ -74,76 +66,109 @@ synprot check examples/pcaps/http_small.pcap -p http -o report.json</code></pre>
     </footer>
   </div>
 
-  <script>
-  (function(){
-    function $(id){ return document.getElementById(id); }
-    function norm(s){ return (s||"").replace(/\r\n/g,"\n").trimStart(); }
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  // Normalize newlines, strip leading whitespace (incl. hidden chars/BOM)
+  function norm(s){ return (s||"").replace(/\\uFEFF/g,"").replace(/\\r\\n/g,"\\n").replace(/\\r/g,"\\n").replace(/^\\s+/, ""); }
 
-    function runChecks(){
-      const input = $("httpInput");
-      const out = $("httpOut");
-      if(!input || !out){ return; }
+  function runChecks(){
+    const input = $("httpInput");
+    const out   = $("httpOut");
+    const dbg   = $("debugBox");
+    if(!input || !out || !dbg){ return; }
 
-      const text = norm(input.value || "");
-      const findings = [];
+    const text = norm(input.value);
+    const findings = [];
 
-      // Detect start-lines:
-      // Request: "GET /path HTTP/1.1"
-      // Response: "HTTP/1.1 200 OK"
-      const isRequest  = /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+\S+\s+HTTP\/1\.[01]\b/i.test(text);
-      const respMatch  = /^HTTP\/1\.[01]\s+(\d{3})\b/i.exec(text);
+    // Permit leading whitespace before start-line
+    const reqRe  = /^\\s*(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\\s+\\S+\\s+HTTP\\/1\\.[01]\\b/i;
+    const respRe = /^\\s*HTTP\\/1\\.[01]\\s+(\\d{3})\\b/i;
 
-      // Request rules
-      if (isRequest) {
-        if (!/\nHost:\s*[^\n]+/i.test("\n" + text)) {
-          findings.push("HTTP/1.1 request MUST include Host header");
-        }
-      }
+    const isRequest = reqRe.test(text);
+    const respMatch = respRe.exec(text);
+    const isResponse = !!respMatch;
+    const statusCode = isResponse ? parseInt(respMatch[1], 10) : null;
 
-      // Response rules
-      if (respMatch) {
-        const code = parseInt(respMatch[1], 10);
-        if (!(code >= 100 && code <= 599)) {
-          findings.push("HTTP response status code must be 100..599");
-        }
-      }
-
-      // If there is content but no valid start-line, flag it
-      if (text.length > 0 && !isRequest && !respMatch) {
-        findings.push("Invalid HTTP/1.1 message: missing start-line (e.g., 'GET /… HTTP/1.1' or 'HTTP/1.1 200 OK').");
-      }
-
-      // Render
-      if (findings.length === 0) {
-        out.className = "result pass";
-        out.textContent = "No findings. Looks good ✔";
-      } else {
-        out.className = "result fail";
-        out.innerHTML = "<b>Findings:</b><ul>" + findings.map(f => "<li>"+f+"</li>").join("") + "</ul>";
+    // Request rules
+    if (isRequest) {
+      // Use a newline prefix so ^\nHost works even if Host is first line after start-line
+      if (!/\\nHost:\\s*[^\\n]+/i.test("\\n" + text)) {
+        findings.push("HTTP/1.1 request MUST include Host header");
       }
     }
 
-    function fill(kind){
-      const ok  = "GET /index.html HTTP/1.1\r\nHost: example.com\r\nUser-Agent: SAPVS\r\n\r\n";
-      const bad = "GET /index.html HTTP/1.1\r\nUser-Agent: SAPVS\r\n\r\n"; // missing Host
-      $("httpInput").value = (kind === "ok") ? ok : bad;
-      runChecks();
+    // Response rules
+    if (isResponse) {
+      if (!(statusCode >= 100 && statusCode <= 599)) {
+        findings.push("HTTP response status code must be 100..599");
+      }
     }
 
-    function ready(){
-      $("btnRun")?.addEventListener("click", runChecks);
-      $("btnOk")?.addEventListener("click", () => fill("ok"));
-      $("btnBad")?.addEventListener("click", () => fill("bad"));
-      // Prefill valid example so you see output immediately
-      fill("ok");
+    // If there is content but neither request nor response detected => invalid
+    if (text.length > 0 && !isRequest && !isResponse) {
+      findings.push("Invalid HTTP/1.1 message: missing start-line (e.g., 'GET /… HTTP/1.1' or 'HTTP/1.1 200 OK').");
     }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", ready);
+    // Render findings
+    if (text.trim().length === 0) {
+      out.className = "result";
+      out.textContent = "No input yet.";
+    } else if (findings.length === 0) {
+      out.className = "result pass";
+      out.textContent = "No findings. Looks good ✔";
     } else {
-      ready();
+      out.className = "result fail";
+      out.innerHTML = "<b>Findings:</b><ul>" + findings.map(f => "<li>"+f+"</li>").join("") + "</ul>";
     }
-  })();
-  </script>
+
+    // Debug details so you can see what it detected
+    dbg.textContent =
+      "Detected:\\n" +
+      "  isRequest  = " + isRequest + "\\n" +
+      "  isResponse = " + isResponse + "\\n" +
+      "  statusCode = " + (statusCode === null ? "n/a" : statusCode) + "\\n" +
+      "Text length: " + text.length + "\\n" +
+      "Preview (first line): " + (text.split("\\n")[0] || "(empty)");
+  }
+
+  function fill(kind){
+    const ok =
+`GET /index.html HTTP/1.1
+Host: example.com
+User-Agent: SAPVS
+
+`;
+    const missingHost =
+`GET /index.html HTTP/1.1
+User-Agent: SAPVS
+
+`;
+    const noStartLine =
+`Date: Thu, 06 Nov 2025 10:00:00 GMT
+Server: SAPVS-Demo
+Content-Type: text/html
+Content-Length: 123
+`;
+    $("httpInput").value = (kind === "ok") ? ok : (kind === "badHost") ? missingHost : noStartLine;
+    runChecks();
+  }
+
+  function ready(){
+    $("btnRun")?.addEventListener("click", runChecks);
+    $("btnOk")?.addEventListener("click", () => fill("ok"));
+    $("btnBadHost")?.addEventListener("click", () => fill("badHost"));
+    $("btnBadStart")?.addEventListener("click", () => fill("noStart"));
+    // Prefill with valid example so you see output + debug immediately
+    fill("ok");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ready);
+  } else {
+    ready();
+  }
+})();
+</script>
 </body>
 </html>
