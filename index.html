@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SAPVS — Syntax-Aware Protocol Verification System</title>
+  <style>
+    :root{
+      --bg:#0b1220;--card:#111827;--border:#1f2937;--text:#e2e8f0;--muted:#94a3b8;--acc:#3b82f6;
+      --mono: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+    .container{max-width:980px;margin:0 auto;padding:24px}
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+    .nav a{color:var(--text);text-decoration:none;margin-left:18px;opacity:.9}
+    .nav a:hover{opacity:1}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin:18px 0}
+    h1{margin:.2rem 0 1rem}
+    .badges span{display:inline-block;background:#0b1220;border:1px solid var(--border);padding:6px 10px;border-radius:999px;margin:2px;font-size:.85rem}
+    .code{font-family:var(--mono);background:#0b1220;border:1px dashed var(--border);border-radius:10px;padding:10px;overflow:auto}
+    .btn{display:inline-block;background:var(--acc);color:white;padding:8px 12px;border-radius:10px;text-decoration:none;border:0;cursor:pointer}
+    .btn:hover{filter:brightness(1.05)}
+    .play{display:grid;grid-template-columns:1fr;gap:12px}
+    textarea{width:100%;min-height:160px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:var(--mono)}
+    .result{padding:10px;border-radius:10px;border:1px solid var(--border);background:#0b1220}
+    .pass{border-color:#14532d;color:#bbf7d0}
+    .fail{border-color:#7f1d1d;color:#fecaca}
+    footer{margin-top:30px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <div><strong>SAPVS</strong></div>
+      <div><a href="./">Home</a></div>
+    </div>
+
+    <section class="card">
+      <h1>Syntax-Aware Protocol Verification System</h1>
+      <p>Automated, grammar- and state-aware verifier for network protocols — built for correctness and security analysis.</p>
+      <div class="badges"><span>ABNF/PEG</span><span>Rule DSL</span><span>State Engine</span><span>JSON Reports</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Quickstart (CLI Project)</h2>
+      <pre class="code"><code>pip install -e .
+synprot check examples/pcaps/http_small.pcap -p http -o report.json</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Rule Playground (browser demo)</h2>
+      <p>Paste a raw HTTP/1.1 request or response. Click Run Checks.</p>
+      <div class="play">
+        <div>
+          <button class="btn" id="btnOk">Paste Example (Valid)</button>
+          <button class="btn" id="btnBad" style="background:#ef4444">Paste Example (Missing Host)</button>
+        </div>
+        <textarea id="httpInput" placeholder="Paste HTTP here..."></textarea>
+        <div id="httpOut" class="result">No input yet.</div>
+        <div><button class="btn" id="btnRun">Run Checks</button></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>About Project</h2>
+      <p><strong>SAPVS</strong> is developed by <strong>Jenin</strong>, <strong>Raswanth</strong>, and <strong>Yogesh</strong>. The goal is to provide a syntax- and state-aware framework for protocol conformance and security analysis with an approachable CLI and clear reports.</p>
+    </section>
+
+    <footer>
+      <span>© 2025 SAPVS — Developed by Jenin, Raswanth & Yogesh. MIT License.</span>
+      <span><a href="#" style="color:#93c5fd">GitHub</a></span>
+    </footer>
+  </div>
+
+  <script>
+  (function(){
+    function $(id){ return document.getElementById(id); }
+    function norm(s){ return (s||"").replace(/\r\n/g,"\n"); }
+    function runChecks(){
+      const input = $("httpInput"), out = $("httpOut");
+      const text = norm(input.value); const findings = [];
+      const req = /^(GET|POST|PUT|DELETE)\s+\S+\s+HTTP\/1\.[01]/i.test(text);
+      const resp = /^HTTP\/1\.[01]\s+(\d{3})/i.exec(text);
+      if(req && !/\nHost:\s*[^\n]+/i.test(text)){ findings.push("HTTP/1.1 request MUST include Host header"); }
+      if(resp){ const code = parseInt(resp[1],10); if(!(code>=100 && code<=599)){ findings.push("HTTP response status code must be 100..599"); } }
+      if(findings.length===0){ out.className="result pass"; out.textContent="No findings. Looks good ✔"; }
+      else{ out.className="result fail"; out.innerHTML="<b>Findings:</b><ul>"+findings.map(f=>"<li>"+f+"</li>").join("")+"</ul>"; }
+    }
+    function fill(kind){
+      const ok="GET /index.html HTTP/1.1\r\nHost: example.com\r\nUser-Agent: SAPVS\r\n\r\n";
+      const bad="GET /index.html HTTP/1.1\r\nUser-Agent: SAPVS\r\n\r\n";
+      $("httpInput").value=(kind==="ok")?ok:bad; runChecks();
+    }
+    function ready(){
+      $("btnRun").onclick=runChecks;
+      $("btnOk").onclick=function(){fill("ok");};
+      $("btnBad").onclick=function(){fill("bad");};
+      fill("ok");
+    }
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",ready); else ready();
+  })();
+  </script>
+</body>
+</html>
