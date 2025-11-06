@@ -77,29 +77,72 @@ synprot check examples/pcaps/http_small.pcap -p http -o report.json</code></pre>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
-    function norm(s){ return (s||"").replace(/\r\n/g,"\n"); }
+    function norm(s){ return (s||"").replace(/\r\n/g,"\n").trimStart(); }
+
     function runChecks(){
-      const input = $("httpInput"), out = $("httpOut");
-      const text = norm(input.value); const findings = [];
-      const req = /^(GET|POST|PUT|DELETE)\s+\S+\s+HTTP\/1\.[01]/i.test(text);
-      const resp = /^HTTP\/1\.[01]\s+(\d{3})/i.exec(text);
-      if(req && !/\nHost:\s*[^\n]+/i.test(text)){ findings.push("HTTP/1.1 request MUST include Host header"); }
-      if(resp){ const code = parseInt(resp[1],10); if(!(code>=100 && code<=599)){ findings.push("HTTP response status code must be 100..599"); } }
-      if(findings.length===0){ out.className="result pass"; out.textContent="No findings. Looks good ✔"; }
-      else{ out.className="result fail"; out.innerHTML="<b>Findings:</b><ul>"+findings.map(f=>"<li>"+f+"</li>").join("")+"</ul>"; }
+      const input = $("httpInput");
+      const out = $("httpOut");
+      if(!input || !out){ return; }
+
+      const text = norm(input.value || "");
+      const findings = [];
+
+      // Detect start-lines:
+      // Request: "GET /path HTTP/1.1"
+      // Response: "HTTP/1.1 200 OK"
+      const isRequest  = /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+\S+\s+HTTP\/1\.[01]\b/i.test(text);
+      const respMatch  = /^HTTP\/1\.[01]\s+(\d{3})\b/i.exec(text);
+
+      // Request rules
+      if (isRequest) {
+        if (!/\nHost:\s*[^\n]+/i.test("\n" + text)) {
+          findings.push("HTTP/1.1 request MUST include Host header");
+        }
+      }
+
+      // Response rules
+      if (respMatch) {
+        const code = parseInt(respMatch[1], 10);
+        if (!(code >= 100 && code <= 599)) {
+          findings.push("HTTP response status code must be 100..599");
+        }
+      }
+
+      // If there is content but no valid start-line, flag it
+      if (text.length > 0 && !isRequest && !respMatch) {
+        findings.push("Invalid HTTP/1.1 message: missing start-line (e.g., 'GET /… HTTP/1.1' or 'HTTP/1.1 200 OK').");
+      }
+
+      // Render
+      if (findings.length === 0) {
+        out.className = "result pass";
+        out.textContent = "No findings. Looks good ✔";
+      } else {
+        out.className = "result fail";
+        out.innerHTML = "<b>Findings:</b><ul>" + findings.map(f => "<li>"+f+"</li>").join("") + "</ul>";
+      }
     }
+
     function fill(kind){
-      const ok="GET /index.html HTTP/1.1\r\nHost: example.com\r\nUser-Agent: SAPVS\r\n\r\n";
-      const bad="GET /index.html HTTP/1.1\r\nUser-Agent: SAPVS\r\n\r\n";
-      $("httpInput").value=(kind==="ok")?ok:bad; runChecks();
+      const ok  = "GET /index.html HTTP/1.1\r\nHost: example.com\r\nUser-Agent: SAPVS\r\n\r\n";
+      const bad = "GET /index.html HTTP/1.1\r\nUser-Agent: SAPVS\r\n\r\n"; // missing Host
+      $("httpInput").value = (kind === "ok") ? ok : bad;
+      runChecks();
     }
+
     function ready(){
-      $("btnRun").onclick=runChecks;
-      $("btnOk").onclick=function(){fill("ok");};
-      $("btnBad").onclick=function(){fill("bad");};
+      $("btnRun")?.addEventListener("click", runChecks);
+      $("btnOk")?.addEventListener("click", () => fill("ok"));
+      $("btnBad")?.addEventListener("click", () => fill("bad"));
+      // Prefill valid example so you see output immediately
       fill("ok");
     }
-    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",ready); else ready();
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", ready);
+    } else {
+      ready();
+    }
   })();
   </script>
 </body>
